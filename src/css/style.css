@@ -469,7 +469,9 @@ body::after {
   color: #fff;
 }
 
-/* ---------- Signing Toolbar ---------- */
+/* ============================================================
+   SIGNING TOOLBAR — slides fully out of view when hidden
+   ============================================================ */
 .signing-toolbar {
   display: flex;
   align-items: center;
@@ -481,11 +483,41 @@ body::after {
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
   flex-wrap: wrap;
-  position: sticky;
-  top: calc(var(--header-h) + 8px);
   z-index: 50;
-  backdrop-filter: blur(12px);
+  /* Smooth slide + fade when hidden */
+  transition: transform 0.35s var(--ease-out),
+              opacity 0.3s ease,
+              box-shadow 0.25s ease;
+  will-change: transform, opacity;
 }
+
+/* Sticky only on large screens (≥1026px), where the sidebar anchors the layout */
+@media (min-width: 1026px) {
+  .signing-toolbar {
+    position: sticky;
+    top: calc(var(--header-h) + 8px);
+    backdrop-filter: blur(12px);
+  }
+}
+
+/* HIDDEN state — the whole toolbar slides up and fades away */
+.signing-toolbar.hidden-toolbar {
+  transform: translateY(calc(-100% - var(--header-h) - 20px));
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: none;
+}
+
+/* The small ▾ button inside the toolbar */
+.toolbar-collapse {
+  flex-shrink: 0;
+}
+.toolbar-collapse .collapse-icon {
+  display: inline-block;
+  transition: transform 0.3s var(--ease-spring);
+  line-height: 1;
+}
+
 .toolbar-spacer { flex: 1; }
 
 .page-controls {
@@ -500,6 +532,45 @@ body::after {
   color: var(--text);
 }
 .page-info { min-width: 110px; text-align: center; }
+
+/* ============================================================
+   FLOATING REVEAL BUTTON — appears when toolbar is hidden
+   ============================================================ */
+.toolbar-reveal {
+  position: fixed;
+  top: calc(var(--header-h) + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 60;
+
+  width: 48px;
+  height: 32px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+
+  transition: opacity 0.3s ease,
+              transform 0.35s var(--ease-spring),
+              box-shadow 0.2s ease;
+}
+.toolbar-reveal.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.toolbar-reveal:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateX(-50%) translateY(2px) scale(1.05);
+}
 
 /* ---------- Signing Area Layout ---------- */
 .signing-area {
@@ -886,9 +957,7 @@ body::after {
   .signing-toolbar {
     flex-wrap: wrap;
     padding: 10px;
-    position: static;
   }
-  .toolbar-spacer { display: none; }
   .signing-toolbar > .btn-primary {
     order: -1;
     width: 100%;

@@ -3,29 +3,33 @@ import { handleDocx, embedSignaturesIntoDocx } from './docx-handler.js';
 import { initSignaturePad, getSignatureDataUrl, resetSignaturePad } from './signature.js';
 
 // ---------- DOM ----------
-const uploadSection    = document.getElementById('upload-section');
-const signingSection   = document.getElementById('signing-section');
-const fileInput        = document.getElementById('file-input');
-const dropzone         = document.getElementById('dropzone');
-const fileNameDisplay  = document.getElementById('file-name');
-const previewArea      = document.getElementById('document-preview');
-const toastContainer   = document.getElementById('toast-container');
-const btnBack          = document.getElementById('btn-back');
-const btnSave          = document.getElementById('btn-save');
-const btnClearSig      = document.getElementById('btn-clear-sig');
-const btnAddSig        = document.getElementById('btn-add-sig');
-const btnTheme         = document.getElementById('btn-theme');
-const progressOverlay  = document.getElementById('progress-overlay');
-const progressBar      = document.getElementById('progress-bar');
-const installBanner    = document.getElementById('install-banner');
-const btnInstall       = document.getElementById('btn-install');
-const btnInstallClose  = document.getElementById('btn-install-close');
+const uploadSection       = document.getElementById('upload-section');
+const signingSection      = document.getElementById('signing-section');
+const fileInput           = document.getElementById('file-input');
+const dropzone            = document.getElementById('dropzone');
+const fileNameDisplay     = document.getElementById('file-name');
+const previewArea         = document.getElementById('document-preview');
+const toastContainer      = document.getElementById('toast-container');
+const btnBack             = document.getElementById('btn-back');
+const btnSave             = document.getElementById('btn-save');
+const btnClearSig         = document.getElementById('btn-clear-sig');
+const btnAddSig           = document.getElementById('btn-add-sig');
+const btnTheme            = document.getElementById('btn-theme');
+const progressOverlay     = document.getElementById('progress-overlay');
+const progressBar         = document.getElementById('progress-bar');
+const installBanner       = document.getElementById('install-banner');
+const btnInstall          = document.getElementById('btn-install');
+const btnInstallClose     = document.getElementById('btn-install-close');
+const signingToolbar      = document.getElementById('signing-toolbar');
+const btnToolbarCollapse  = document.getElementById('btn-toolbar-collapse');
+const btnToolbarReveal    = document.getElementById('btn-toolbar-reveal');
 
 // ---------- State ----------
 let currentFileType = null;
 let pdfState = null;
 let docxState = null;
 let selectedSignature = null;
+let toolbarManuallyHidden = false;
 
 // ---------- Progress bar ----------
 function showProgress(pct) {
@@ -53,10 +57,70 @@ function showToast(message, type = 'info', duration = 3800) {
   }, duration);
 }
 
+// ---------- Toolbar hide / reveal ----------
+function hideToolbar(manual = false) {
+  if (!signingToolbar) return;
+  signingToolbar.classList.add('hidden-toolbar');
+  btnToolbarReveal?.classList.add('visible');
+  if (manual) toolbarManuallyHidden = true;
+}
+
+function revealToolbar(resetManual = true) {
+  if (!signingToolbar) return;
+  signingToolbar.classList.remove('hidden-toolbar');
+  btnToolbarReveal?.classList.remove('visible');
+  if (resetManual) toolbarManuallyHidden = false;
+}
+
+// ▾ inside the toolbar → hide it
+btnToolbarCollapse?.addEventListener('click', () => {
+  hideToolbar(true);
+});
+
+// ▴ floating pill → bring it back
+btnToolbarReveal?.addEventListener('click', () => {
+  revealToolbar(true);
+});
+
+// Auto-hide when scrolling down; auto-reveal near the top
+let lastScrollY = window.scrollY;
+let scrollTicking = false;
+
+window.addEventListener('scroll', () => {
+  if (scrollTicking) return;
+  scrollTicking = true;
+  requestAnimationFrame(() => {
+    // Only act while the signing view is visible
+    if (!signingSection.classList.contains('active')) {
+      scrollTicking = false;
+      return;
+    }
+    if (toolbarManuallyHidden) {
+      scrollTicking = false;
+      return;
+    }
+
+    const y = window.scrollY;
+    if (y > 120 && y > lastScrollY) {
+      hideToolbar(false);       // auto-hide on scroll down
+    } else if (y < 40) {
+      revealToolbar(false);     // auto-reveal near the top
+    }
+    lastScrollY = y;
+    scrollTicking = false;
+  });
+}, { passive: true });
+
 // ---------- View switching ----------
 function switchView(view) {
   uploadSection.classList.toggle('active', view === 'upload');
   signingSection.classList.toggle('active', view === 'signing');
+
+  // Always reset the toolbar state when entering the signing view
+  if (view === 'signing') {
+    revealToolbar(true);
+    lastScrollY = window.scrollY;
+  }
 }
 
 // ---------- Theme toggle ----------
@@ -176,6 +240,12 @@ btnAddSig.addEventListener('click', () => {
   overlay.style.height = '70px';
   overlay.style.left = '40px';
   overlay.style.top = '80px';
+
+  if (currentFileType === 'pdf' && pdfState) {
+    overlay.dataset.page = String(pdfState.getCurrentPage());
+  } else {
+    overlay.dataset.page = '1';
+  }
 
   const img = document.createElement('img');
   img.src = dataUrl;

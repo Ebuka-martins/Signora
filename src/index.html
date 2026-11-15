@@ -72,7 +72,7 @@
 
     <!-- Signing view -->
     <section id="signing-section" class="view">
-      <div class="signing-toolbar">
+      <div class="signing-toolbar" id="signing-toolbar">
         <button id="btn-back" class="btn btn-ghost">
           <span>←</span> New Document
         </button>
@@ -85,7 +85,15 @@
         <button id="btn-save" class="btn btn-primary">
           <span>💾</span> Save Signed Document
         </button>
+        <button id="btn-toolbar-collapse" class="icon-btn toolbar-collapse" title="Hide toolbar" aria-label="Hide toolbar">
+          <span class="collapse-icon">▾</span>
+        </button>
       </div>
+
+      <!-- Floating expand button shown when toolbar is hidden -->
+      <button class="toolbar-reveal" id="btn-toolbar-reveal" title="Show toolbar" aria-label="Show toolbar">
+        <span>▴</span>
+      </button>
 
       <div class="signing-area">
         <div class="document-preview" id="document-preview"></div>
