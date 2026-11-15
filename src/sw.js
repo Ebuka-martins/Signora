@@ -1,9 +1,9 @@
-const CACHE_NAME = 'signora-v2';
+const CACHE_NAME = 'signora-v3';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/css/style.css',
+  '/css/style.css?v=2', 
   '/js/app.js',
   '/js/pdf-handler.js',
   '/js/docx-handler.js',
