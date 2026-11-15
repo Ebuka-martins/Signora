@@ -1,73 +1,144 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#1E293B" />
-  <title>Signora — Sign Documents</title>
+  <meta name="theme-color" content="#4F46E5" />
+  <meta name="description" content="Signora — a beautiful, private, offline-capable document signing app for PDF and Word." />
+  <title>Signora — Sign Documents Beautifully</title>
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" href="/icons/icon-192.png" />
   <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/style.css" />
+
+  <!-- Preload theme to avoid flash -->
+  <script>
+    (function () {
+      var t = localStorage.getItem('signora-theme');
+      if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
 </head>
 <body>
+  <!-- Progress bar -->
+  <div class="progress-overlay" id="progress-overlay">
+    <div class="progress-bar" id="progress-bar"></div>
+  </div>
+
+  <!-- Header -->
   <header class="app-header">
     <div class="header-inner">
-      <h1 class="logo">Signora</h1>
+      <div class="logo">
+        <span class="logo-icon">S</span>
+        <span>Signora</span>
+      </div>
       <span class="tagline">Sign anything. Anywhere.</span>
+      <div class="header-actions">
+        <button class="icon-btn" id="btn-theme" title="Toggle theme" aria-label="Toggle theme">🌙</button>
+      </div>
     </div>
   </header>
 
   <main class="app-main">
-    <!-- Upload View -->
+    <!-- Upload view -->
     <section id="upload-section" class="view active">
-      <div class="upload-card">
-        <div class="upload-icon">📄</div>
-        <h2>Upload a document to sign</h2>
-        <p class="upload-hint">
-          PDF, DOC, or DOCX — PDFs process locally.<br />
-          Word docs are converted on our server for maximum formatting fidelity.
+      <div class="upload-hero">
+        <div class="hero-badge">✨ Private · Offline-ready · PWA</div>
+        <h1 class="hero-title">Sign documents beautifully.</h1>
+        <p class="hero-subtitle">
+          Upload a PDF or Word document, draw your signature with your finger,
+          and download it signed — all without uploading anything sensitive to the cloud.
         </p>
-        <label for="file-input" class="btn btn-primary btn-large">Choose Document</label>
-        <input type="file" id="file-input" accept=".pdf,.doc,.docx" hidden />
-        <p id="file-name" class="file-name"></p>
+
+        <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Upload document">
+          <div class="dropzone-icon">📄</div>
+          <h2>Drop a document or tap to browse</h2>
+          <p class="dropzone-hint">PDFs are processed entirely on your device. Word docs are converted on our server for perfect formatting.</p>
+          <span class="btn btn-primary btn-large">Choose Document</span>
+          <div class="dropzone-formats">
+            <span class="format-chip">PDF</span>
+            <span class="format-chip">DOC</span>
+            <span class="format-chip">DOCX</span>
+          </div>
+          <div class="file-name" id="file-name"></div>
+          <input type="file" id="file-input" accept=".pdf,.doc,.docx" hidden />
+        </div>
       </div>
     </section>
 
-    <!-- Signing View -->
+    <!-- Signing view -->
     <section id="signing-section" class="view">
       <div class="signing-toolbar">
-        <button id="btn-back" class="btn btn-ghost">← New Document</button>
+        <button id="btn-back" class="btn btn-ghost">
+          <span>←</span> New Document
+        </button>
         <div class="page-controls" id="pdf-page-controls" hidden>
-          <button id="prev-page" class="btn btn-icon">‹</button>
-          <span id="page-info">Page 1 of 1</span>
-          <button id="next-page" class="btn btn-icon">›</button>
+          <button id="prev-page" class="btn-icon btn" aria-label="Previous page">‹</button>
+          <span class="page-info" id="page-info">Page 1 of 1</span>
+          <button id="next-page" class="btn-icon btn" aria-label="Next page">›</button>
         </div>
-        <button id="btn-save" class="btn btn-primary">Save Signed Document</button>
+        <div class="toolbar-spacer"></div>
+        <button id="btn-save" class="btn btn-primary">
+          <span>💾</span> Save Signed Document
+        </button>
       </div>
 
       <div class="signing-area">
         <div class="document-preview" id="document-preview"></div>
 
-        <div class="signature-panel" id="signature-panel">
-          <h3>Your Signature</h3>
-          <canvas id="signature-canvas" width="400" height="200"></canvas>
-          <div class="signature-actions">
+        <aside class="signature-panel" id="signature-panel">
+          <h3 class="panel-title">Your Signature</h3>
+
+          <div class="sig-tools">
+            <div class="sig-colors" id="sig-colors">
+              <button class="sig-color active" data-color="#0F172A" style="background:#0F172A" title="Black"></button>
+              <button class="sig-color" data-color="#1E40AF" style="background:#1E40AF" title="Navy"></button>
+              <button class="sig-color" data-color="#7C3AED" style="background:#7C3AED" title="Violet"></button>
+              <button class="sig-color" data-color="#059669" style="background:#059669" title="Green"></button>
+              <button class="sig-color" data-color="#DC2626" style="background:#DC2626" title="Red"></button>
+            </div>
+            <div class="sig-width">
+              <input type="range" id="sig-width" min="0.8" max="4" step="0.2" value="2" title="Stroke width" />
+            </div>
+          </div>
+
+          <div class="sig-canvas-wrap" id="sig-canvas-wrap">
+            <canvas id="signature-canvas"></canvas>
+            <div class="sig-canvas-placeholder">Draw your signature here</div>
+          </div>
+
+          <div class="sig-actions">
             <button id="btn-clear-sig" class="btn btn-ghost">Clear</button>
             <button id="btn-add-sig" class="btn btn-primary">Place Signature</button>
           </div>
+
           <p class="hint">
-            Draw with your finger or mouse. Then tap "Place Signature" and drag
-            to position it on the document.
+            Draw with your finger or mouse. Then tap <strong>Place Signature</strong>
+            and drag it onto the document to reposition or resize.
           </p>
-        </div>
+        </aside>
       </div>
     </section>
   </main>
 
-  <div id="toast" class="toast" hidden></div>
+  <div class="toast-container" id="toast-container"></div>
 
-  <!-- PDF.js (ES module) -->
+  <!-- PWA install banner -->
+  <div class="install-banner hidden" id="install-banner">
+    <div class="install-banner-icon">📲</div>
+    <div class="install-banner-content">
+      <div class="install-banner-title">Install Signora</div>
+      <div class="install-banner-sub">Add to your home screen for instant access</div>
+    </div>
+    <button class="btn btn-primary" id="btn-install">Install</button>
+    <button class="install-banner-close" id="btn-install-close" aria-label="Dismiss">×</button>
+  </div>
+
+  <!-- PDF.js as ES module -->
   <script type="module">
     import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs';
     pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -75,19 +146,12 @@
     window.pdfjsLib = pdfjsLib;
   </script>
 
-  <!-- Signature Pad -->
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@5.0.1/dist/signature_pad.umd.min.js"></script>
-
-  <!-- Mammoth (DOCX -> HTML preview) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-
-  <!-- pdf-lib (client-side PDF signing) -->
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 
-  <!-- App entry point (ES module) -->
   <script type="module" src="/js/app.js"></script>
 
-  <!-- Service Worker registration -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {

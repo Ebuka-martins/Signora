@@ -1,13 +1,13 @@
 {
   "name": "Signora — Document Signing",
   "short_name": "Signora",
-  "description": "Upload, sign, and save PDF and Word documents securely on your device.",
+  "description": "Upload, sign, and save PDF and Word documents beautifully.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#F8FAFC",
-  "theme_color": "#1E293B",
+  "background_color": "#FAF7FF",
+  "theme_color": "#4F46E5",
   "icons": [
     {
       "src": "/icons/icon-192.png",

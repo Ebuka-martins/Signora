@@ -24,7 +24,9 @@ export async function handleDocx(file, container) {
 }
 
 export async function embedSignaturesIntoDocx(docxState, container, signatureEls) {
-  const containerRect = container.getBoundingClientRect();
+  // Measure signatures relative to the preview content (not the padded wrapper)
+  const content = container.querySelector('.docx-preview-content') || container;
+  const contentRect = content.getBoundingClientRect();
   const signatures = [];
 
   for (const el of signatureEls) {
@@ -33,10 +35,10 @@ export async function embedSignaturesIntoDocx(docxState, container, signatureEls
 
     const imgRect = img.getBoundingClientRect();
 
-    const relX = (imgRect.left - containerRect.left) / containerRect.width;
-    const relY = (imgRect.top - containerRect.top) / containerRect.height;
-    const relW = imgRect.width / containerRect.width;
-    const relH = imgRect.height / containerRect.height;
+    const relX = (imgRect.left - contentRect.left) / contentRect.width;
+    const relY = (imgRect.top - contentRect.top) / contentRect.height;
+    const relW = imgRect.width / contentRect.width;
+    const relH = imgRect.height / contentRect.height;
 
     signatures.push({
       dataUrl: img.src,
