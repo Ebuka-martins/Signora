@@ -27,7 +27,9 @@ const upload = multer({
 // ---------------------------------------------------------------------------
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, '..', 'src')));
-app.use('/icons', express.static(path.join(__dirname, '..', 'public', 'icons')));
+app.use('/favicon', express.static(path.join(__dirname, '..', 'assets', 'favicon')));
+app.use('/icons',   express.static(path.join(__dirname, '..', 'assets', 'icons')));
+app.use('/assets',  express.static(path.join(__dirname, '..', 'assets')));
 
 // ---------------------------------------------------------------------------
 // Root
