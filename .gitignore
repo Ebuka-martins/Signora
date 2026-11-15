@@ -5,5 +5,8 @@ env.py
 __pycache__/
 *.py[cod]
 node_modules/
+tmp/
 .github/
 cloudinary_python.txt
+*.log
+.DS_Store
