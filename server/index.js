@@ -23,6 +23,17 @@ const upload = multer({
 });
 
 // ---------------------------------------------------------------------------
+// Service Worker — never let the browser HTTP-cache sw.js
+// (must be defined BEFORE express.static mounts)
+// ---------------------------------------------------------------------------
+app.get('/sw.js', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, '..', 'src', 'sw.js'));
+});
+
+// ---------------------------------------------------------------------------
 // Static file serving
 // ---------------------------------------------------------------------------
 app.use(express.json({ limit: '50mb' }));
