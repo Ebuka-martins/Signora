@@ -24,24 +24,27 @@ export async function handleDocx(file, container) {
 }
 
 export async function embedSignaturesIntoDocx(docxState, container, signatureEls) {
-  // Measure signatures relative to the preview content (not the padded wrapper)
   const content = container.querySelector('.docx-preview-content') || container;
   const contentRect = content.getBoundingClientRect();
   const signatures = [];
 
+  // Render each signature with its rotation baked in
   for (const el of signatureEls) {
     const img = el.querySelector('img');
     if (!img) continue;
 
+    const rotation = parseFloat(el.dataset.rotation || '0');
+    const rotatedDataUrl = await rotateImage(img.src, rotation);
+
     const imgRect = img.getBoundingClientRect();
 
     const relX = (imgRect.left - contentRect.left) / contentRect.width;
-    const relY = (imgRect.top - contentRect.top) / contentRect.height;
-    const relW = imgRect.width / contentRect.width;
+    const relY = (imgRect.top  - contentRect.top)  / contentRect.height;
+    const relW = imgRect.width  / contentRect.width;
     const relH = imgRect.height / contentRect.height;
 
     signatures.push({
-      dataUrl: img.src,
+      dataUrl: rotatedDataUrl,
       page: 1,
       x: Math.max(0, Math.min(1, relX)),
       y: Math.max(0, Math.min(1, relY)),
@@ -77,4 +80,30 @@ export async function embedSignaturesIntoDocx(docxState, container, signatureEls
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+function rotateImage(dataUrl, degrees) {
+  return new Promise((resolve) => {
+    if (!degrees || degrees === 0) return resolve(dataUrl);
+    const img = new Image();
+    img.onload = () => {
+      const rad = (degrees * Math.PI) / 180;
+      const cos = Math.abs(Math.cos(rad));
+      const sin = Math.abs(Math.sin(rad));
+      const w = img.width;
+      const h = img.height;
+      const newW = Math.ceil(w * cos + h * sin);
+      const newH = Math.ceil(w * sin + h * cos);
+      const canvas = document.createElement('canvas');
+      canvas.width = newW;
+      canvas.height = newH;
+      const ctx = canvas.getContext('2d');
+      ctx.translate(newW / 2, newH / 2);
+      ctx.rotate(rad);
+      ctx.drawImage(img, -w / 2, -h / 2);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
 }

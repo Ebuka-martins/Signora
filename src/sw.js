@@ -1,9 +1,9 @@
-const CACHE_NAME = 'signora-v5';
+const CACHE_NAME = 'signora-v6';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/css/style.css?v=2',
+  '/css/style.css?v=3',
   '/js/app.js',
   '/js/pdf-handler.js',
   '/js/docx-handler.js',
@@ -23,8 +23,6 @@ const ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // Add each asset individually so one failure (e.g. a missing favicon)
-      // does not abort the entire install.
       return Promise.all(
         ASSETS.map((url) =>
           cache.add(url).catch((err) => {
@@ -47,10 +45,7 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Never intercept API requests
-  if (event.request.url.includes('/api/')) {
-    return;
-  }
+  if (event.request.url.includes('/api/')) return;
 
   event.respondWith(
     caches.match(event.request).then((cached) => {

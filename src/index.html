@@ -7,25 +7,22 @@
   <meta name="description" content="Signora — a beautiful, private, offline-capable document signing app for PDF and Word." />
   <title>Signora — Sign Documents Beautifully</title>
 
-      <!-- Favicon References -->
-
+  <!-- Favicon -->
   <link rel="icon" href="/favicon/favicon.ico" sizes="any" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
 
-    <!-- PWA Manifest and Icons -->
+  <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json" />
 
-  <!-- App Icons -->
-  <link rel="icon" href="/icons/icon-192.png" />
-  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <!-- Fonts (including signature-style fonts) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Dancing+Script:wght@600;700&family=Great+Vibes&family=Allura&family=Caveat:wght@600&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/style.css?v=2" />
+  <link rel="stylesheet" href="/css/style.css?v=3" />
 
   <!-- Preload theme to avoid flash -->
   <script>
@@ -37,12 +34,10 @@
   </script>
 </head>
 <body>
-  <!-- Progress bar -->
   <div class="progress-overlay" id="progress-overlay">
     <div class="progress-bar" id="progress-bar"></div>
   </div>
 
-  <!-- Header -->
   <header class="app-header">
     <div class="header-inner">
       <div class="logo">
@@ -95,6 +90,7 @@
           <button id="next-page" class="btn-icon btn" aria-label="Next page">›</button>
         </div>
         <div class="toolbar-spacer"></div>
+        <span class="sig-count-badge" id="sig-count-badge" title="Signatures placed">0</span>
         <button id="btn-save" class="btn btn-primary">
           <span>💾</span> Save Signed Document
         </button>
@@ -103,7 +99,6 @@
         </button>
       </div>
 
-      <!-- Floating expand button shown when toolbar is hidden -->
       <button class="toolbar-reveal" id="btn-toolbar-reveal" title="Show toolbar" aria-label="Show toolbar">
         <span>▴</span>
       </button>
@@ -114,22 +109,63 @@
         <aside class="signature-panel" id="signature-panel">
           <h3 class="panel-title">Your Signature</h3>
 
-          <div class="sig-tools">
-            <div class="sig-colors" id="sig-colors">
-              <button class="sig-color active" data-color="#0F172A" style="background:#0F172A" title="Black"></button>
-              <button class="sig-color" data-color="#1E40AF" style="background:#1E40AF" title="Navy"></button>
-              <button class="sig-color" data-color="#7C3AED" style="background:#7C3AED" title="Violet"></button>
-              <button class="sig-color" data-color="#059669" style="background:#059669" title="Green"></button>
-              <button class="sig-color" data-color="#DC2626" style="background:#DC2626" title="Red"></button>
+          <!-- Signature mode tabs -->
+          <div class="sig-mode-tabs" role="tablist">
+            <button class="sig-mode-tab active" data-mode="draw" role="tab">✍️ Draw</button>
+            <button class="sig-mode-tab" data-mode="type" role="tab">⌨️ Type</button>
+          </div>
+
+          <!-- DRAW mode -->
+          <div class="sig-mode-pane active" data-pane="draw">
+            <div class="sig-tools">
+              <div class="sig-colors" id="sig-colors">
+                <button class="sig-color active" data-color="#0F172A" style="background:#0F172A" title="Black"></button>
+                <button class="sig-color" data-color="#1E40AF" style="background:#1E40AF" title="Navy"></button>
+                <button class="sig-color" data-color="#7C3AED" style="background:#7C3AED" title="Violet"></button>
+                <button class="sig-color" data-color="#059669" style="background:#059669" title="Green"></button>
+                <button class="sig-color" data-color="#DC2626" style="background:#DC2626" title="Red"></button>
+              </div>
+              <div class="sig-width">
+                <input type="range" id="sig-width" min="0.8" max="4" step="0.2" value="2" title="Stroke width" />
+              </div>
             </div>
-            <div class="sig-width">
-              <input type="range" id="sig-width" min="0.8" max="4" step="0.2" value="2" title="Stroke width" />
+
+            <div class="sig-canvas-wrap" id="sig-canvas-wrap">
+              <canvas id="signature-canvas"></canvas>
+              <div class="sig-canvas-placeholder">Draw your signature here</div>
             </div>
           </div>
 
-          <div class="sig-canvas-wrap" id="sig-canvas-wrap">
-            <canvas id="signature-canvas"></canvas>
-            <div class="sig-canvas-placeholder">Draw your signature here</div>
+          <!-- TYPE mode -->
+          <div class="sig-mode-pane" data-pane="type">
+            <input
+              type="text"
+              id="sig-typed-input"
+              class="sig-typed-input"
+              placeholder="Type your name…"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <div class="sig-font-list" id="sig-font-list">
+              <button class="sig-font-option active" data-font="Dancing Script">Dancing</button>
+              <button class="sig-font-option" data-font="Great Vibes">Vibes</button>
+              <button class="sig-font-option" data-font="Allura">Allura</button>
+              <button class="sig-font-option" data-font="Caveat">Caveat</button>
+            </div>
+            <div class="sig-typed-preview" id="sig-typed-preview">
+              <span class="typed-placeholder">Your signature preview</span>
+            </div>
+          </div>
+
+          <!-- Style presets (affects drawn signature rendering) -->
+          <div class="sig-style-row">
+            <label class="sig-style-label">Style</label>
+            <div class="sig-style-list" id="sig-style-list">
+              <button class="sig-style active" data-style="natural" title="Natural handwriting">Natural</button>
+              <button class="sig-style" data-style="bold" title="Bold strokes">Bold</button>
+              <button class="sig-style" data-style="fine" title="Fine strokes">Fine</button>
+              <button class="sig-style" data-style="ink" title="Calligraphy ink">Ink</button>
+            </div>
           </div>
 
           <div class="sig-actions">
@@ -138,8 +174,9 @@
           </div>
 
           <p class="hint">
-            Draw with your finger or mouse. Then tap <strong>Place Signature</strong>
-            and drag it onto the document to reposition or resize.
+            Draw or type your signature. Then tap <strong>Place Signature</strong>
+            to stamp it onto the current page. Drag to move, corner circle to
+            resize, curved arrow to rotate, red × to delete.
           </p>
         </aside>
       </div>
@@ -148,7 +185,6 @@
 
   <div class="toast-container" id="toast-container"></div>
 
-  <!-- PWA install banner -->
   <div class="install-banner hidden" id="install-banner">
     <div class="install-banner-icon">📲</div>
     <div class="install-banner-content">
@@ -159,7 +195,6 @@
     <button class="install-banner-close" id="btn-install-close" aria-label="Dismiss">×</button>
   </div>
 
-  <!-- PDF.js as ES module -->
   <script type="module">
     import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs';
     pdfjsLib.GlobalWorkerOptions.workerSrc =

@@ -23,6 +23,7 @@ const btnInstallClose     = document.getElementById('btn-install-close');
 const signingToolbar      = document.getElementById('signing-toolbar');
 const btnToolbarCollapse  = document.getElementById('btn-toolbar-collapse');
 const btnToolbarReveal    = document.getElementById('btn-toolbar-reveal');
+const sigCountBadge       = document.getElementById('sig-count-badge');
 
 // ---------- State ----------
 let currentFileType = null;
@@ -31,7 +32,11 @@ let docxState = null;
 let selectedSignature = null;
 let toolbarManuallyHidden = false;
 
-// ---------- Progress bar ----------
+// Registry of ALL placed signatures, keyed by page number (PDF) or "1" (DOCX)
+// Each entry: { el, page }
+const signatureRegistry = [];
+
+// ---------- Progress ----------
 function showProgress(pct) {
   progressOverlay.classList.add('active');
   progressBar.style.width = pct + '%';
@@ -44,86 +49,77 @@ function hideProgress() {
   }, 350);
 }
 
-// ---------- Toasts ----------
+// ---------- Toast ----------
 function showToast(message, type = 'info', duration = 3800) {
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   toast.textContent = message;
   toastContainer.appendChild(toast);
-
   setTimeout(() => {
     toast.classList.add('leaving');
     toast.addEventListener('animationend', () => toast.remove(), { once: true });
   }, duration);
 }
 
-// ---------- Toolbar hide / reveal ----------
+// ---------- Signature count badge ----------
+function updateSigCount() {
+  if (!sigCountBadge) return;
+  const n = signatureRegistry.length;
+  sigCountBadge.textContent = String(n);
+  sigCountBadge.dataset.count = String(n);
+  sigCountBadge.classList.remove('bump');
+  void sigCountBadge.offsetWidth;
+  sigCountBadge.classList.add('bump');
+}
+
+// ---------- Toolbar show/hide ----------
 function hideToolbar(manual = false) {
   if (!signingToolbar) return;
   signingToolbar.classList.add('hidden-toolbar');
   btnToolbarReveal?.classList.add('visible');
   if (manual) toolbarManuallyHidden = true;
 }
-
 function revealToolbar(resetManual = true) {
   if (!signingToolbar) return;
   signingToolbar.classList.remove('hidden-toolbar');
   btnToolbarReveal?.classList.remove('visible');
   if (resetManual) toolbarManuallyHidden = false;
 }
+btnToolbarCollapse?.addEventListener('click', () => hideToolbar(true));
+btnToolbarReveal?.addEventListener('click', () => revealToolbar(true));
 
-// ▾ inside the toolbar → hide it
-btnToolbarCollapse?.addEventListener('click', () => {
-  hideToolbar(true);
-});
-
-// ▴ floating pill → bring it back
-btnToolbarReveal?.addEventListener('click', () => {
-  revealToolbar(true);
-});
-
-// Auto-hide when scrolling down; auto-reveal near the top
 let lastScrollY = window.scrollY;
 let scrollTicking = false;
-
 window.addEventListener('scroll', () => {
   if (scrollTicking) return;
   scrollTicking = true;
   requestAnimationFrame(() => {
-    // Only act while the signing view is visible
     if (!signingSection.classList.contains('active')) {
-      scrollTicking = false;
-      return;
+      scrollTicking = false; return;
     }
     if (toolbarManuallyHidden) {
-      scrollTicking = false;
-      return;
+      scrollTicking = false; return;
     }
-
     const y = window.scrollY;
-    if (y > 120 && y > lastScrollY) {
-      hideToolbar(false);       // auto-hide on scroll down
-    } else if (y < 40) {
-      revealToolbar(false);     // auto-reveal near the top
-    }
+    if (y > 120 && y > lastScrollY) hideToolbar(false);
+    else if (y < 40) revealToolbar(false);
     lastScrollY = y;
     scrollTicking = false;
   });
 }, { passive: true });
 
-// ---------- View switching ----------
+// ---------- View switch ----------
 function switchView(view) {
   uploadSection.classList.toggle('active', view === 'upload');
   signingSection.classList.toggle('active', view === 'signing');
 
-  // Always reset the toolbar state when entering the signing view
   if (view === 'signing') {
     revealToolbar(true);
     lastScrollY = window.scrollY;
   }
 }
 
-// ---------- Theme toggle ----------
+// ---------- Theme ----------
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   btnTheme.textContent = theme === 'dark' ? '☀️' : '🌙';
@@ -144,7 +140,6 @@ dropzone.addEventListener('keydown', (e) => {
     fileInput.click();
   }
 });
-
 ['dragenter', 'dragover'].forEach(evt => {
   dropzone.addEventListener(evt, (e) => {
     e.preventDefault();
@@ -161,7 +156,6 @@ dropzone.addEventListener('drop', (e) => {
   const file = e.dataTransfer.files[0];
   if (file) processFile(file);
 });
-
 fileInput.addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (file) processFile(file);
@@ -174,10 +168,13 @@ async function processFile(file) {
     showToast('Please upload a PDF, DOC, or DOCX file.', 'error');
     return;
   }
-
   fileNameDisplay.textContent = file.name;
   fileNameDisplay.classList.add('visible');
   currentFileType = ext === 'pdf' ? 'pdf' : 'docx';
+
+  // Clear signature registry for new document
+  signatureRegistry.length = 0;
+  updateSigCount();
 
   try {
     showToast('Loading document…');
@@ -185,7 +182,7 @@ async function processFile(file) {
     previewArea.innerHTML = '<div class="skeleton"></div>';
 
     if (currentFileType === 'pdf') {
-      pdfState = await handlePdf(file, previewArea);
+      pdfState = await handlePdf(file, previewArea, onPdfPageChange);
       showProgress(75);
       showToast('PDF loaded. Draw your signature.', 'success');
     } else {
@@ -198,13 +195,19 @@ async function processFile(file) {
     initSignaturePad();
     resetSignaturePad();
     hideProgress();
-
   } catch (err) {
     console.error(err);
     previewArea.innerHTML = '';
     hideProgress();
     showToast('Failed to load document: ' + err.message, 'error', 6000);
   }
+}
+
+// ---------- PDF page-change: show/hide signatures for the active page ----------
+function onPdfPageChange(newPage) {
+  signatureRegistry.forEach(entry => {
+    entry.el.style.display = entry.page === newPage ? '' : 'none';
+  });
 }
 
 // ---------- Back ----------
@@ -216,52 +219,66 @@ btnBack.addEventListener('click', () => {
   fileNameDisplay.textContent = '';
   fileNameDisplay.classList.remove('visible');
   document.getElementById('pdf-page-controls').hidden = true;
+  signatureRegistry.length = 0;
+  updateSigCount();
   switchView('upload');
 });
 
-// ---------- Signature clear ----------
+// ---------- Clear ----------
 btnClearSig.addEventListener('click', () => {
   resetSignaturePad();
-  document.querySelectorAll('.placed-signature').forEach(el => el.remove());
-  selectedSignature = null;
 });
 
 // ---------- Place signature ----------
 btnAddSig.addEventListener('click', () => {
   const dataUrl = getSignatureDataUrl();
   if (!dataUrl) {
-    showToast('Please draw a signature first.', 'error');
+    showToast('Please draw or type a signature first.', 'error');
     return;
   }
 
   const overlay = document.createElement('div');
   overlay.className = 'placed-signature';
-  overlay.style.width = '180px';
-  overlay.style.height = '70px';
+  overlay.style.width = '200px';
+  overlay.style.height = '80px';
   overlay.style.left = '40px';
   overlay.style.top = '80px';
+  overlay.style.transform = 'rotate(0deg)';
 
-  if (currentFileType === 'pdf' && pdfState) {
-    overlay.dataset.page = String(pdfState.getCurrentPage());
-  } else {
-    overlay.dataset.page = '1';
-  }
+  const currentPage = currentFileType === 'pdf' && pdfState
+    ? pdfState.getCurrentPage()
+    : 1;
+
+  overlay.dataset.page = String(currentPage);
+  overlay.dataset.rotation = '0';
 
   const img = document.createElement('img');
   img.src = dataUrl;
   img.alt = 'signature';
   overlay.appendChild(img);
 
+  // Resize handle
   const resizeHandle = document.createElement('div');
-  resizeHandle.className = 'resize-handle';
+  resizeHandle.className = 'handle resize-handle';
+  resizeHandle.innerHTML = '⤡';
+  resizeHandle.title = 'Resize';
   overlay.appendChild(resizeHandle);
 
-  const deleteHandle = document.createElement('button');
-  deleteHandle.className = 'delete-handle';
+  // Rotate handle
+  const rotateHandle = document.createElement('div');
+  rotateHandle.className = 'handle rotate-handle';
+  rotateHandle.innerHTML = '↻';
+  rotateHandle.title = 'Rotate';
+  overlay.appendChild(rotateHandle);
+
+  // Delete handle
+  const deleteHandle = document.createElement('div');
+  deleteHandle.className = 'handle delete-handle';
   deleteHandle.innerHTML = '×';
+  deleteHandle.title = 'Delete';
   deleteHandle.addEventListener('click', (e) => {
     e.stopPropagation();
-    overlay.remove();
+    removeSignature(overlay);
   });
   overlay.appendChild(deleteHandle);
 
@@ -270,18 +287,32 @@ btnAddSig.addEventListener('click', () => {
 
   makeDraggable(overlay);
   makeResizable(overlay, resizeHandle);
+  makeRotatable(overlay, rotateHandle);
   makeSelectable(overlay);
 
-  showToast('Signature placed. Drag to position it.', 'success');
+  // Register globally
+  signatureRegistry.push({ el: overlay, page: currentPage });
+  updateSigCount();
+
+  showToast(`Signature placed on page ${currentPage}. Drag to move.`, 'success');
 });
+
+// ---------- Delete a signature completely ----------
+function removeSignature(el) {
+  const idx = signatureRegistry.findIndex(e => e.el === el);
+  if (idx !== -1) signatureRegistry.splice(idx, 1);
+  el.remove();
+  if (selectedSignature === el) selectedSignature = null;
+  updateSigCount();
+  showToast('Signature deleted.', 'info');
+}
 
 // ---------- Drag ----------
 function makeDraggable(el) {
   let startX, startY, startLeft, startTop;
 
   const onStart = (e) => {
-    if (e.target.classList.contains('resize-handle') ||
-        e.target.classList.contains('delete-handle')) return;
+    if (e.target.classList.contains('handle')) return;
     e.preventDefault();
     const point = e.touches ? e.touches[0] : e;
     startX = point.clientX;
@@ -350,6 +381,52 @@ function makeResizable(el, handle) {
   handle.addEventListener('touchstart', onStart, { passive: false });
 }
 
+// ---------- Rotate ----------
+function makeRotatable(el, handle) {
+  let centerX, centerY, startAngle, startRotation;
+
+  const onStart = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    const rect = el.getBoundingClientRect();
+    centerX = rect.left + rect.width / 2;
+    centerY = rect.top + rect.height / 2;
+
+    const point = e.touches ? e.touches[0] : e;
+    startAngle = Math.atan2(point.clientY - centerY, point.clientX - centerX);
+    startRotation = parseFloat(el.dataset.rotation || '0');
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+  };
+
+  const onMove = (e) => {
+    e.preventDefault();
+    const point = e.touches ? e.touches[0] : e;
+    const angle = Math.atan2(point.clientY - centerY, point.clientX - centerX);
+    const deltaDeg = (angle - startAngle) * (180 / Math.PI);
+
+    let newRotation = startRotation + deltaDeg;
+    newRotation = ((newRotation % 360) + 360) % 360;
+
+    el.dataset.rotation = String(newRotation);
+    el.style.transform = `rotate(${newRotation}deg)`;
+  };
+
+  const onEnd = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onEnd);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onEnd);
+  };
+
+  handle.addEventListener('mousedown', onStart);
+  handle.addEventListener('touchstart', onStart, { passive: false });
+}
+
 // ---------- Selection ----------
 function makeSelectable(el) {
   el.addEventListener('click', (e) => {
@@ -364,7 +441,7 @@ previewArea.addEventListener('click', () => {
   selectedSignature = null;
 });
 
-// ---------- Keyboard shortcuts ----------
+// ---------- Keyboard ----------
 document.addEventListener('keydown', (e) => {
   const mod = e.ctrlKey || e.metaKey;
   if (mod && e.key.toLowerCase() === 's') {
@@ -378,15 +455,13 @@ document.addEventListener('keydown', (e) => {
   if ((e.key === 'Delete' || e.key === 'Backspace') && selectedSignature) {
     if (document.activeElement.tagName === 'INPUT' ||
         document.activeElement.tagName === 'TEXTAREA') return;
-    selectedSignature.remove();
-    selectedSignature = null;
+    removeSignature(selectedSignature);
   }
 });
 
 // ---------- Save ----------
 btnSave.addEventListener('click', async () => {
-  const signatures = document.querySelectorAll('.placed-signature');
-  if (signatures.length === 0) {
+  if (signatureRegistry.length === 0) {
     showToast('Please place at least one signature on the document.', 'error');
     return;
   }
@@ -397,14 +472,17 @@ btnSave.addEventListener('click', async () => {
   showProgress(20);
 
   try {
+    // Every signature element, regardless of current page
+    const signatureEls = signatureRegistry.map(e => e.el);
+
     if (currentFileType === 'pdf' && pdfState) {
       showProgress(50);
-      await embedSignaturesIntoPdf(pdfState, previewArea, signatures);
+      await embedSignaturesIntoPdf(pdfState, previewArea, signatureEls);
       showProgress(100);
       showToast('Signed PDF downloaded!', 'success');
     } else if (currentFileType === 'docx' && docxState) {
       showProgress(40);
-      await embedSignaturesIntoDocx(docxState, previewArea, signatures);
+      await embedSignaturesIntoDocx(docxState, previewArea, signatureEls);
       showProgress(100);
       showToast('Signed document downloaded!', 'success');
     }
@@ -419,7 +497,7 @@ btnSave.addEventListener('click', async () => {
   }
 });
 
-// ---------- PWA install prompt ----------
+// ---------- PWA install ----------
 let deferredInstallPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
