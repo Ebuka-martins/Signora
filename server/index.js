@@ -34,6 +34,17 @@ app.get('/sw.js', (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Prevent browsers from HTTP-caching the protected entry points
+// (must be defined BEFORE express.static so it runs first)
+// ---------------------------------------------------------------------------
+app.use((req, res, next) => {
+  if (req.path === '/' || req.path === '/index.html' || req.path === '/login.html') {
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  }
+  next();
+});
+
+// ---------------------------------------------------------------------------
 // Static file serving
 // ---------------------------------------------------------------------------
 app.use(express.json({ limit: '50mb' }));

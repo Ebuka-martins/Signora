@@ -1,9 +1,8 @@
-const CACHE_NAME = 'signora-v8';
+const CACHE_NAME = 'signora-v10';
 const ASSETS = [
-  '/',
-  '/index.html',
+  '/login.html',
   '/manifest.json',
-  '/css/style.css?v=3',
+  '/css/style.css?v=5',
   '/js/app.js',
   '/js/pdf-handler.js',
   '/js/docx-handler.js',
@@ -45,8 +44,25 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.url.includes('/api/')) return;
+  const url = new URL(event.request.url);
 
+  // Never cache or intercept dynamic / protected routes:
+  //   /                   → the app entry (must hit server)
+  //   /index.html         → same
+  //   /login.html         → must hit server so any HTML updates are picked up
+  //   /api/*              → session-dependent
+  //   /sw.js              → must always fetch fresh
+  if (
+    url.pathname === '/' ||
+    url.pathname === '/index.html' ||
+    url.pathname === '/login.html' ||
+    url.pathname === '/sw.js' ||
+    url.pathname.startsWith('/api/')
+  ) {
+    return; // Let the browser fetch from network directly
+  }
+
+  // Cache-first for static assets
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
@@ -58,6 +74,9 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       });
-    }).catch(() => caches.match('/index.html'))
+    }).catch(() => {
+      // Offline fallback: only for /login.html
+      return caches.match('/login.html');
+    })
   );
 });

@@ -7,6 +7,21 @@
   <meta name="description" content="Signora — a beautiful, private, offline-capable document signing app for PDF and Word." />
   <title>Signora — Sign Documents Beautifully</title>
 
+  <!-- ============================================================
+       AUTH GUARD — runs before anything else in the page
+       Redirects to /login.html if the user isn't signed in.
+       MUST be first so no UI flashes before the redirect.
+       ============================================================ -->
+  <script>
+    (function () {
+      if (sessionStorage.getItem('signora_logged_in') !== 'true') {
+        window.location.replace('/login.html');
+        // Stop page parsing as much as possible
+        document.documentElement.style.display = 'none';
+      }
+    })();
+  </script>
+
   <!-- Favicon -->
   <link rel="icon" href="/favicon/favicon.ico" sizes="any" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png" />
@@ -22,7 +37,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Dancing+Script:wght@600;700&family=Great+Vibes&family=Allura&family=Caveat:wght@600&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/style.css?v=4" />
+  <link rel="stylesheet" href="/css/style.css?v=5" />
 
   <!-- Preload theme to avoid flash -->
   <script>
@@ -34,12 +49,10 @@
   </script>
 </head>
 <body>
-  <!-- Progress bar -->
   <div class="progress-overlay" id="progress-overlay">
     <div class="progress-bar" id="progress-bar"></div>
   </div>
 
-  <!-- Header -->
   <header class="app-header">
     <div class="header-inner">
       <div class="logo">
@@ -50,14 +63,14 @@
       <div class="header-actions">
         <button class="icon-btn" id="btn-theme" title="Toggle theme" aria-label="Toggle theme">🌙</button>
         <button class="signout-btn" onclick="sessionStorage.clear(); location.replace('/login.html');" title="Sign out">
-          <span>↩</span> Sign out
+          <span>↩</span>
+          <span class="signout-text">Sign out</span>
         </button>
       </div>
     </div>
   </header>
 
   <main class="app-main">
-    <!-- Upload view -->
     <section id="upload-section" class="view active">
       <div class="upload-hero">
         <div class="hero-badge">✨ Private · Offline-ready · PWA</div>
@@ -83,7 +96,6 @@
       </div>
     </section>
 
-    <!-- Signing view -->
     <section id="signing-section" class="view">
       <div class="signing-toolbar" id="signing-toolbar">
         <button id="btn-back" class="btn btn-ghost">
