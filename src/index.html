@@ -16,13 +16,13 @@
   <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json" />
 
-  <!-- Fonts (including signature-style fonts) -->
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Dancing+Script:wght@600;700&family=Great+Vibes&family=Allura&family=Caveat:wght@600&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/style.css?v=3" />
+  <link rel="stylesheet" href="/css/style.css?v=4" />
 
   <!-- Preload theme to avoid flash -->
   <script>
@@ -34,10 +34,12 @@
   </script>
 </head>
 <body>
+  <!-- Progress bar -->
   <div class="progress-overlay" id="progress-overlay">
     <div class="progress-bar" id="progress-bar"></div>
   </div>
 
+  <!-- Header -->
   <header class="app-header">
     <div class="header-inner">
       <div class="logo">
@@ -47,6 +49,9 @@
       <span class="tagline">Sign anything. Anywhere.</span>
       <div class="header-actions">
         <button class="icon-btn" id="btn-theme" title="Toggle theme" aria-label="Toggle theme">🌙</button>
+        <button class="signout-btn" onclick="sessionStorage.clear(); location.replace('/login.html');" title="Sign out">
+          <span>↩</span> Sign out
+        </button>
       </div>
     </div>
   </header>
@@ -109,13 +114,11 @@
         <aside class="signature-panel" id="signature-panel">
           <h3 class="panel-title">Your Signature</h3>
 
-          <!-- Signature mode tabs -->
           <div class="sig-mode-tabs" role="tablist">
             <button class="sig-mode-tab active" data-mode="draw" role="tab">✍️ Draw</button>
             <button class="sig-mode-tab" data-mode="type" role="tab">⌨️ Type</button>
           </div>
 
-          <!-- DRAW mode -->
           <div class="sig-mode-pane active" data-pane="draw">
             <div class="sig-tools">
               <div class="sig-colors" id="sig-colors">
@@ -136,7 +139,6 @@
             </div>
           </div>
 
-          <!-- TYPE mode -->
           <div class="sig-mode-pane" data-pane="type">
             <input
               type="text"
@@ -157,7 +159,6 @@
             </div>
           </div>
 
-          <!-- Style presets (affects drawn signature rendering) -->
           <div class="sig-style-row">
             <label class="sig-style-label">Style</label>
             <div class="sig-style-list" id="sig-style-list">

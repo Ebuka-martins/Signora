@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4F46E5" />
+  <title>Sign in — Signora</title>
+  <link rel="icon" href="/favicon/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --primary: #4F46E5;
+      --primary-2: #7C3AED;
+      --accent: #06B6D4;
+      --error: #F43F5E;
+      --bg: #FAF7FF;
+      --surface: #FFFFFF;
+      --border: #E6E0F5;
+      --text: #0F0A24;
+      --text-muted: #6B6B8A;
+    }
+    [data-theme="dark"] {
+      --primary: #818CF8;
+      --primary-2: #A78BFA;
+      --bg: #0B0B14;
+      --surface: #1A1A2E;
+      --border: #2D2D4A;
+      --text: #F1F0FF;
+      --text-muted: #9A9AB8;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      overflow-x: hidden;
+      position: relative;
+    }
+    body::before, body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.4;
+      z-index: -1;
+      pointer-events: none;
+    }
+    body::before {
+      top: -15%; left: -10%; width: 60vw; height: 60vw;
+      background: radial-gradient(circle, var(--primary-2), transparent 70%);
+    }
+    body::after {
+      bottom: -15%; right: -10%; width: 55vw; height: 55vw;
+      background: radial-gradient(circle, var(--accent), transparent 70%);
+    }
+
+    .card {
+      width: 100%;
+      max-width: 400px;
+      background: var(--surface);
+      border-radius: 22px;
+      box-shadow: 0 16px 48px rgba(79, 70, 229, 0.15);
+      border: 1px solid var(--border);
+      padding: 40px 32px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .brand-icon {
+      width: 44px; height: 44px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      display: grid; place-items: center;
+      color: #fff; font-size: 1.4rem; font-weight: 900;
+    }
+    .brand-name {
+      font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2), var(--accent));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.25rem; font-weight: 700;
+      margin-top: 20px; margin-bottom: 6px;
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-bottom: 26px;
+    }
+    label {
+      display: block;
+      font-size: 0.82rem; font-weight: 600;
+      margin-bottom: 6px;
+    }
+    input {
+      width: 100%;
+      padding: 13px 16px;
+      border-radius: 14px;
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.95rem;
+      margin-bottom: 16px;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      color: #fff;
+      font-family: inherit;
+      font-size: 1rem; font-weight: 700;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px rgba(79, 70, 229, 0.4);
+    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .error {
+      display: none;
+      background: rgba(244, 63, 94, 0.1);
+      color: var(--error);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 14px;
+      text-align: center;
+    }
+    .error.visible { display: block; }
+    .hint {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+  </style>
+
+  <script>
+    // Load saved theme
+    (function () {
+      var t = localStorage.getItem('signora-theme');
+      if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+</head>
+<body>
+
+  <main class="card">
+    <div class="brand">
+      <span class="brand-icon">S</span>
+      <span class="brand-name">Signora</span>
+    </div>
+
+    <h1>Welcome back</h1>
+    <p class="subtitle">Sign in to continue to Signora.</p>
+
+    <div class="error" id="error-msg"></div>
+
+    <form id="login-form">
+      <label for="username">Username</label>
+      <input
+        type="text"
+        id="username"
+        placeholder="Enter your username"
+        autocomplete="username"
+        autocapitalize="none"
+        spellcheck="false"
+        required
+      />
+
+      <label for="password">Password</label>
+      <input
+        type="password"
+        id="password"
+        placeholder="Enter your password"
+        autocomplete="current-password"
+        required
+      />
+
+      <button type="submit" id="submit-btn">Sign in</button>
+    </form>
+
+    <p class="hint">Your documents stay on your device.</p>
+  </main>
+
+  <script>
+    // ============================================================
+    //  CHANGE THESE CREDENTIALS TO WHATEVER YOU WANT
+    // ============================================================
+    const VALID_USERNAME = 'martins';
+    const VALID_PASSWORD = 'teleVISION2010';
+
+    // If user is already logged in, skip to the app
+    if (sessionStorage.getItem('signora_logged_in') === 'true') {
+      window.location.replace('/index.html');
+    }
+
+    const form = document.getElementById('login-form');
+    const errorEl = document.getElementById('error-msg');
+    const btn = document.getElementById('submit-btn');
+    const userInput = document.getElementById('username');
+    const passInput = document.getElementById('password');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      errorEl.classList.remove('visible');
+
+      const u = userInput.value.trim();
+      const p = passInput.value;
+
+      if (!u || !p) {
+        errorEl.textContent = 'Please enter both username and password.';
+        errorEl.classList.add('visible');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Signing in…';
+
+      // Small delay so the button change is visible
+      setTimeout(() => {
+        if (u === VALID_USERNAME && p === VALID_PASSWORD) {
+          sessionStorage.setItem('signora_logged_in', 'true');
+          sessionStorage.setItem('signora_username', u);
+          window.location.replace('/index.html');
+        } else {
+          errorEl.textContent = 'Wrong username or password.';
+          errorEl.classList.add('visible');
+          btn.disabled = false;
+          btn.textContent = 'Sign in';
+          passInput.value = '';
+          passInput.focus();
+        }
+      }, 350);
+    });
+
+    userInput.focus();
+  </script>
+</body>
+</html>

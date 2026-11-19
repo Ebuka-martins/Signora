@@ -1,3 +1,9 @@
+// Auth guard — redirect to login if not authenticated
+if (sessionStorage.getItem('signora_logged_in') !== 'true') {
+  window.location.replace('/login.html');
+  throw new Error('Redirecting to login');
+}
+
 import { handlePdf, embedSignaturesIntoPdf } from './pdf-handler.js';
 import { handleDocx, embedSignaturesIntoDocx } from './docx-handler.js';
 import { initSignaturePad, getSignatureDataUrl, resetSignaturePad } from './signature.js';
