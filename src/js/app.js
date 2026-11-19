@@ -32,7 +32,7 @@ let docxState = null;
 let selectedSignature = null;
 let toolbarManuallyHidden = false;
 
-// Registry of ALL placed signatures, keyed by page number (PDF) or "1" (DOCX)
+// The ONLY source of truth for placed signatures. Survives page navigation.
 // Each entry: { el, page }
 const signatureRegistry = [];
 
@@ -61,7 +61,7 @@ function showToast(message, type = 'info', duration = 3800) {
   }, duration);
 }
 
-// ---------- Signature count badge ----------
+// ---------- Signature counter ----------
 function updateSigCount() {
   if (!sigCountBadge) return;
   const n = signatureRegistry.length;
@@ -172,7 +172,6 @@ async function processFile(file) {
   fileNameDisplay.classList.add('visible');
   currentFileType = ext === 'pdf' ? 'pdf' : 'docx';
 
-  // Clear signature registry for new document
   signatureRegistry.length = 0;
   updateSigCount();
 
@@ -182,7 +181,8 @@ async function processFile(file) {
     previewArea.innerHTML = '<div class="skeleton"></div>';
 
     if (currentFileType === 'pdf') {
-      pdfState = await handlePdf(file, previewArea, onPdfPageChange);
+      // Pass the registry so pdf-handler can re-attach overlays on page change
+      pdfState = await handlePdf(file, previewArea, onPdfPageChange, signatureRegistry);
       showProgress(75);
       showToast('PDF loaded. Draw your signature.', 'success');
     } else {
@@ -203,11 +203,11 @@ async function processFile(file) {
   }
 }
 
-// ---------- PDF page-change: show/hide signatures for the active page ----------
-function onPdfPageChange(newPage) {
-  signatureRegistry.forEach(entry => {
-    entry.el.style.display = entry.page === newPage ? '' : 'none';
-  });
+// ---------- PDF page-change callback ----------
+// pdf-handler already re-attaches overlays correctly. This callback is just
+// for anything else you might want to do (currently nothing).
+function onPdfPageChange(_newPage, _totalPages) {
+  // no-op; the registry-driven render handles everything
 }
 
 // ---------- Back ----------
@@ -257,25 +257,22 @@ btnAddSig.addEventListener('click', () => {
   img.alt = 'signature';
   overlay.appendChild(img);
 
-  // Resize handle
   const resizeHandle = document.createElement('div');
   resizeHandle.className = 'handle resize-handle';
   resizeHandle.innerHTML = '⤡';
   resizeHandle.title = 'Resize';
   overlay.appendChild(resizeHandle);
 
-  // Rotate handle
   const rotateHandle = document.createElement('div');
   rotateHandle.className = 'handle rotate-handle';
   rotateHandle.innerHTML = '↻';
   rotateHandle.title = 'Rotate';
   overlay.appendChild(rotateHandle);
 
-  // Delete handle
   const deleteHandle = document.createElement('div');
   deleteHandle.className = 'handle delete-handle';
   deleteHandle.innerHTML = '×';
-  deleteHandle.title = 'Delete';
+  deleteHandle.title = 'Delete signature';
   deleteHandle.addEventListener('click', (e) => {
     e.stopPropagation();
     removeSignature(overlay);
@@ -290,21 +287,21 @@ btnAddSig.addEventListener('click', () => {
   makeRotatable(overlay, rotateHandle);
   makeSelectable(overlay);
 
-  // Register globally
+  // Register in the single source of truth
   signatureRegistry.push({ el: overlay, page: currentPage });
   updateSigCount();
 
-  showToast(`Signature placed on page ${currentPage}. Drag to move.`, 'success');
+  showToast(`Signature placed on page ${currentPage}.`, 'success', 2200);
 });
 
-// ---------- Delete a signature completely ----------
+// ---------- Delete ----------
 function removeSignature(el) {
   const idx = signatureRegistry.findIndex(e => e.el === el);
   if (idx !== -1) signatureRegistry.splice(idx, 1);
   el.remove();
   if (selectedSignature === el) selectedSignature = null;
   updateSigCount();
-  showToast('Signature deleted.', 'info');
+  showToast('Signature deleted.', 'info', 2000);
 }
 
 // ---------- Drag ----------
@@ -388,11 +385,9 @@ function makeRotatable(el, handle) {
   const onStart = (e) => {
     e.stopPropagation();
     e.preventDefault();
-
     const rect = el.getBoundingClientRect();
     centerX = rect.left + rect.width / 2;
     centerY = rect.top + rect.height / 2;
-
     const point = e.touches ? e.touches[0] : e;
     startAngle = Math.atan2(point.clientY - centerY, point.clientX - centerX);
     startRotation = parseFloat(el.dataset.rotation || '0');
@@ -408,10 +403,8 @@ function makeRotatable(el, handle) {
     const point = e.touches ? e.touches[0] : e;
     const angle = Math.atan2(point.clientY - centerY, point.clientX - centerX);
     const deltaDeg = (angle - startAngle) * (180 / Math.PI);
-
     let newRotation = startRotation + deltaDeg;
     newRotation = ((newRotation % 360) + 360) % 360;
-
     el.dataset.rotation = String(newRotation);
     el.style.transform = `rotate(${newRotation}deg)`;
   };
@@ -472,7 +465,6 @@ btnSave.addEventListener('click', async () => {
   showProgress(20);
 
   try {
-    // Every signature element, regardless of current page
     const signatureEls = signatureRegistry.map(e => e.el);
 
     if (currentFileType === 'pdf' && pdfState) {

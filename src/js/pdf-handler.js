@@ -1,4 +1,4 @@
-const { PDFDocument, degrees } = PDFLib;
+const { PDFDocument } = PDFLib;
 
 let currentPdfDoc = null;
 let currentPage = 1;
@@ -6,9 +6,14 @@ let totalPages = 1;
 let previewContainer = null;
 let pageChangeCallback = null;
 
-export async function handlePdf(file, container, onPageChange) {
+// Module-level reference to the app's registry — set once by handlePdf()
+let signatureRegistry = [];
+
+export async function handlePdf(file, container, onPageChange, registry) {
   previewContainer = container;
   pageChangeCallback = onPageChange;
+  signatureRegistry = registry || [];
+
   const arrayBuffer = await file.arrayBuffer();
 
   const pdfjsLib = window.pdfjsLib;
@@ -39,7 +44,7 @@ export async function handlePdf(file, container, onPageChange) {
       currentPage--;
       await renderPage(currentPage);
       updateNav();
-      pageChangeCallback?.(currentPage);
+      pageChangeCallback?.(currentPage, totalPages);
     }
   });
   newNext.addEventListener('click', async () => {
@@ -47,7 +52,7 @@ export async function handlePdf(file, container, onPageChange) {
       currentPage++;
       await renderPage(currentPage);
       updateNav();
-      pageChangeCallback?.(currentPage);
+      pageChangeCallback?.(currentPage, totalPages);
     }
   });
 
@@ -63,13 +68,22 @@ export async function handlePdf(file, container, onPageChange) {
   };
 }
 
+/**
+ * Renders the page canvas, then re-attaches every overlay from the registry
+ * whose `data-page` matches this page.
+ *
+ * IMPORTANT: overlays are NEVER read from the DOM (that's what was losing them).
+ * We always read from `signatureRegistry` and append fresh. The registry is the
+ * single source of truth for "where every signature lives".
+ */
 async function renderPage(pageNum) {
   if (!currentPdfDoc || !previewContainer) return;
 
-  // Preserve existing signature overlays (they're tracked by data-page)
-  const existing = Array.from(previewContainer.querySelectorAll('.placed-signature'));
-  existing.forEach(el => el.remove());
+  // 1. Detach any overlays currently in the DOM (but keep them alive in the registry)
+  const currentlyAttached = Array.from(previewContainer.querySelectorAll('.placed-signature'));
+  currentlyAttached.forEach(el => el.remove());
 
+  // 2. Render the new page canvas
   previewContainer.innerHTML = '';
 
   const page = await currentPdfDoc.getPage(pageNum);
@@ -86,31 +100,28 @@ async function renderPage(pageNum) {
   await page.render({ canvasContext: ctx, viewport }).promise;
   previewContainer.appendChild(canvas);
 
-  // Re-append overlays that belong to this page
-  existing.forEach(el => {
-    if (parseInt(el.dataset.page, 10) === pageNum) {
-      previewContainer.appendChild(el);
+  // 3. Re-attach every overlay from the registry whose page matches.
+  //    We iterate the registry (source of truth), not the DOM.
+  signatureRegistry.forEach(entry => {
+    if (entry.page === pageNum && entry.el) {
+      // Ensure it's visible
+      entry.el.style.display = '';
+      previewContainer.appendChild(entry.el);
     }
   });
 }
 
-/**
- * Embeds every signature into its tagged page.
- * Each signature's rotation is baked into a rotated PNG before embed.
- */
 export async function embedSignaturesIntoPdf(pdfState, container, signatureEls) {
   const { pdfBytes, fileName } = pdfState;
   const pdfDoc = await PDFDocument.load(pdfBytes.slice(0));
   const pages = pdfDoc.getPages();
 
-  // Measure against the CURRENT visible canvas, then normalize to percentages
   const canvas = container.querySelector('canvas');
   if (!canvas) throw new Error('No PDF page rendered.');
 
   const canvasRect = canvas.getBoundingClientRect();
   const currentPdfPage = pdfState.getCurrentPage();
 
-  // Group signatures by their page
   const byPage = new Map();
   signatureEls.forEach(el => {
     const pageNum = parseInt(el.dataset.page, 10) || currentPdfPage;
@@ -118,28 +129,18 @@ export async function embedSignaturesIntoPdf(pdfState, container, signatureEls) 
     byPage.get(pageNum).push(el);
   });
 
-  // For each page with signatures, embed them
   for (const [pageNum, els] of byPage) {
     const page = pages[pageNum - 1];
     if (!page) continue;
 
     const { width: pdfW, height: pdfH } = page.getSize();
 
-    // If this signature is on the visible page, we can measure it directly.
-    // If on another page, we don't have its rendered canvas — so we use a
-    // heuristic: treat its percentage position from the last time it was visible.
-    // For simplicity here we re-render each page offscreen to measure properly.
-    let pageCanvas = null;
     let pageCanvasRect = null;
 
     if (pageNum === currentPdfPage) {
-      pageCanvas = canvas;
-      pageCanvasRect = canvasRect;
+      pageCanvasRect = { width: canvasRect.width, height: canvasRect.height, left: canvasRect.left, top: canvasRect.top };
     } else {
-      // Render the target page offscreen so we can measure correctly
       const rendered = await renderPageOffscreen(pageNum);
-      pageCanvas = rendered.canvas;
-      // We don't need getBoundingClientRect for offscreen — we use canvas dimensions
       pageCanvasRect = { width: rendered.width, height: rendered.height, left: 0, top: 0 };
     }
 
@@ -149,13 +150,11 @@ export async function embedSignaturesIntoPdf(pdfState, container, signatureEls) 
 
       const rotation = parseFloat(el.dataset.rotation || '0');
 
-      // Bake rotation into the PNG
       const rotatedDataUrl = await rotateImage(img.src, rotation);
       const base64 = rotatedDataUrl.split(',')[1];
       const imgBytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
       const embeddedImg = await pdfDoc.embedPng(imgBytes);
 
-      // Position measurement
       const imgRect = img.getBoundingClientRect();
       let relX, relY, w, h;
 
@@ -165,8 +164,6 @@ export async function embedSignaturesIntoPdf(pdfState, container, signatureEls) 
         w = imgRect.width;
         h = imgRect.height;
       } else {
-        // For hidden pages, element.getBoundingClientRect() returns 0s, so we
-        // fall back to reading inline style (left/top/width/height in px).
         relX = parseFloat(el.style.left) || 0;
         relY = parseFloat(el.style.top)  || 0;
         w = parseFloat(el.style.width)  || 200;
@@ -179,8 +176,6 @@ export async function embedSignaturesIntoPdf(pdfState, container, signatureEls) 
       const pdfX = relX * scaleX;
       const pdfY = pdfH - (relY * scaleY) - (h * scaleY);
 
-      // If rotated, the image's own width/height are swapped when laid flat.
-      // We embed using the ORIGINAL unrotated image dimensions rotated by pdf-lib.
       page.drawImage(embeddedImg, {
         x: pdfX,
         y: pdfY,
@@ -194,7 +189,6 @@ export async function embedSignaturesIntoPdf(pdfState, container, signatureEls) 
   downloadBlob(new Blob([signedBytes], { type: 'application/pdf' }), `signed-${fileName}`);
 }
 
-// Render a page to an offscreen canvas and return its size
 async function renderPageOffscreen(pageNum) {
   const page = await currentPdfDoc.getPage(pageNum);
   const viewport = page.getViewport({ scale: 1.5 });
@@ -206,11 +200,9 @@ async function renderPageOffscreen(pageNum) {
   return { canvas, width: viewport.width, height: viewport.height };
 }
 
-// Rotate a PNG data URL by given degrees and return a new PNG data URL
 function rotateImage(dataUrl, degrees) {
   return new Promise((resolve) => {
     if (!degrees || degrees === 0) return resolve(dataUrl);
-
     const img = new Image();
     img.onload = () => {
       const rad = (degrees * Math.PI) / 180;
@@ -220,7 +212,6 @@ function rotateImage(dataUrl, degrees) {
       const h = img.height;
       const newW = Math.ceil(w * cos + h * sin);
       const newH = Math.ceil(w * sin + h * cos);
-
       const canvas = document.createElement('canvas');
       canvas.width = newW;
       canvas.height = newH;

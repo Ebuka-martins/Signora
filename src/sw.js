@@ -1,4 +1,4 @@
-const CACHE_NAME = 'signora-v6';
+const CACHE_NAME = 'signora-v8';
 const ASSETS = [
   '/',
   '/index.html',
