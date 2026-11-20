@@ -196,27 +196,181 @@ signora/
 
 
 
+### What each file does
 
+| File | Responsibility |
+|------|----------------|
+| `server/index.js` | HTTP server, static file serving, JWT auth, user registration/login, LibreOffice conversion pipeline. Everything server-side lives here. |
+| `src/index.html` | The single-page app shell. Contains the auth guard, upload UI, signing UI, signature panel, install banner, and script tags for all CDN libraries. |
+| `src/login.html` | Standalone sign-in page. Only ~150 lines of inline CSS + JS so it renders instantly without waiting for the app shell. |
+| `src/signup.html` | Standalone account creation page. Same self-contained pattern as `login.html`. |
+| `src/manifest.json` | Declares the app as installable: name, icons, theme colour, `display: standalone`, and `start_url`. |
+| `src/sw.js` | Service Worker. Caches the app shell for offline use; bypasses cache for `/`, `/index.html`, `/login.html`, `/signup.html`, `/sw.js`, and `/api/*`. |
+| `src/css/style.css` | All styles for the app. CSS custom properties at the top define the design tokens (colours, radii, shadows, animations). Dark mode is a `[data-theme="dark"]` override of those tokens. |
+| `src/js/app.js` | Wires everything together: view switching, toolbar behaviour, signature placement (drag/resize/rotate/delete), page registry, save button. |
+| `src/js/pdf-handler.js` | Renders PDF pages with PDF.js and embeds signatures into the PDF bytes with pdf-lib on save. Also handles multi-page signature tagging. |
+| `src/js/docx-handler.js` | Uses Mammoth.js for the Word preview, then uploads the original file + signature coordinates to `/api/sign-docx` and downloads the returned PDF. |
+| `src/js/signature.js` | Wraps Signature Pad. Exposes draw mode, typed mode, colour/width/style controls, and PNG export at high DPI. |
 
-
-<!-- ![CI logo](https://codeinstitute.s3.amazonaws.com/fullstack/ci_logo_small.png)
-
-# Signora
-
-A Progressive Web App for signing PDF and Word documents.
-
-- **PDF**: signed entirely in the browser (pdf-lib + PDF.js).
-- **Word (DOC/DOCX)**: uploaded to a Node.js server, converted to PDF via
-  LibreOffice for maximum formatting fidelity, then signed server-side
-  and returned as a signed PDF.
+---
 
 ## Requirements
 
-- Node.js 18+
-- LibreOffice installed locally (for DOCX signing)
+### Required
 
-## Local Setup
+- **Node.js 18+** and **npm 9+**
+- Modern browser (Chrome 90+, Firefox 90+, Safari 15+, Edge 90+)
 
-### 1. Install LibreOffice
+### Required for Word document signing only
 
-Ubuntu / Debian: -->
+- **LibreOffice** (Writer component) on the machine running the server
+
+### Installing LibreOffice
+
+**Ubuntu / Debian**
+```bash
+sudo apt update
+sudo apt install -y libreoffice-writer fonts-liberation fonts-dejavu-core
+
+
+```
+
+### Fedora / RHEL
+
+```
+sudo dnf install -y libreoffice-writer liberation-fonts dejavu-sans-fonts
+
+```
+
+
+### macOS (Homebrew)
+
+```
+brew install --cask libreoffice
+sudo ln -sf /Applications/LibreOffice.app/Contents/MacOS/soffice /usr/local/bin/libreoffice
+
+```
+
+### Windows
+
+Download from libreoffice.org
+
+Install with defaults
+
+Add C:\Program Files\LibreOffice\program to your PATH
+
+### Verify the install worked:
+
+`libreoffice --version`
+
+If that prints a version number, you're ready.
+
+## Quick Start
+
+```
+# 1. Clone the project
+git clone <your-repo-url> signora
+cd signora
+
+# 2. Install Node dependencies
+npm install
+
+# 3. Set a persistent JWT secret (recommended — see Environment Variables)
+export JWT_SECRET="$(openssl rand -hex 48)"
+
+# 4. Start the app
+npm start
+
+```
+The server opens http://localhost:3000 in your browser. You'll be redirected to the login page.
+
+## First-time use
+
+```
+Click Create one on the login page
+
+Choose a username, password, and (optionally) a display name
+
+You're signed in and taken to the main app
+
+Upload a PDF or Word document
+
+Draw or type your signature
+
+Place it on the document
+
+Click Save Signed Document → the signed file downloads
+
+That's it. No accounts to activate, no email verification, no payment screens
+
+```
+
+## Environment Variables
+
+| **Variable** | **Required** | **Default** | **Description** |
+|:--------------|:-----------:|:------------|:------------|
+| PORT | NO | 3000 | HTTP port the server listens on |
+| JWT_SECRET | Recommended | random per-restart | Secret used to sign session tokens. If unset, tokens are invalidated on every restart — fine for local dev, not for production. |
+| NODE_ENV | NO | - | Set to production on deployed servers |
+| CI | NO | - | If set, skips auto-opening the browser on start |
+| DOCKER | NO | - | If set, skips auto-opening the browser on start |
+
+## Generating a good JWT secret
+
+`openssl rand -hex 48`
+
+Copy the output and either `export JWT_SECRET="..."` in your shell, or add it to a .env file and load it with dotenv (not included by default).
+
+Set this before going live. Without it, every server restart logs everyone out.
+
+## Using the App
+
+ ### Signing a PDF
+
+ From the upload screen, drop a PDF or click Choose Document
+
+In the signature panel on the right:
+
+**Draw tab:** draw with your finger or mouse
+
+**Type tab:** type your name in a handwritten font
+
+Adjust colour, stroke width, and style
+
+Click Place **Signature —** a signature box appears on the document
+
+**Drag** to move, **corner circle** to resize, **curved arrow** to rotate
+
+If you need to sign another page, click › to change page, then place another signature
+
+Click the red × on any placed signature to delete it
+
+Click Save **Signed Document →** the signed PDF downloads
+
+
+## Signing a Word document
+
+Same flow, with two differences:
+
+The preview is rendered by Mammoth.js, so it may look slightly different from Word's own rendering
+
+The output is a PDF, not a DOCX (see How It Works)
+
+Conversion takes 2–5 seconds on first use (LibreOffice cold start) and under 1 second after that.
+
+
+## Keyboard shortcuts
+
+```
+Shortcut	Action
+Ctrl+S / Cmd+S	     Save signed document
+Delete / Backspace	   Delete selected signature
+Esc	                    Deselect signature
+Enter / Space (on dropzone)	    Open file picker
+
+```
+
+## Signing Out
+
+`Click ↩ Sign out in the top-right of the header. Your session token is cleared and you're returned to the login page.`
+
