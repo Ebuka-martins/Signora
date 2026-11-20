@@ -374,3 +374,95 @@ Enter / Space (on dropzone)	    Open file picker
 
 `Click ↩ Sign out in the top-right of the header. Your session token is cleared and you're returned to the login page.`
 
+## API Reference
+`All endpoints accept and return JSON unless otherwise noted.`
+
+## Public endpoints
+`POST /api/register`
+
+## Errors
+
+```
+Code	    Meaning
+400	      Missing field, username too short/long, invalid characters, password too short
+409	      Username already taken
+
+```
+
+## Form Fields
+
+```
+Field	    Type	    Description
+document	  file	    The DOCX/DOC file (max 25 MB)
+signatures	  string	    JSON array of signature objects
+
+```
+
+## PWA Installation & Offline Behaviour
+
+  ### Installing
+
+ **Chrome / Edge (desktop or Android) —** a custom install banner appears the first time you visit. Click Install.
+
+ **iOS Safari —** tap Share → Add to Home Screen (iOS does not show install prompts automatically).
+
+ Once installed, Signora appears as a standalone app with its own window and icon — no browser chrome.
+
+ ### Offline behaviour
+   
+The Service Worker caches the app shell on first load. This means:
+
+  **Login page loads offline** if you were signed in previously (JWT is checked on first API call)
+
+  **PDF signing works offline —** PDF.js, pdf-lib, and Signature Pad are all cached
+
+  **Word signing does not work offline —** the /api/sign-docx endpoint requires the server
+
+
+  ### What is NOT cached
+
+These paths always hit the server:
+
+  `/ and /index.html —` so auth-guards always reflect the current session
+
+  `/login.html and /signup.html —` so account-related code updates propagate immediately
+
+  `/sw.js —` so Service Worker updates are picked up without delay
+
+  `/api/* —` obviously
+
+  ## Updating The App
+
+  ```
+ const CACHE_NAME = 'signora-v12';  // was v11
+
+  ```
+  The new Service Worker installs, deletes old caches, and activates on next visit. Force an update from **DevTools → Application → Service Workers → Unregister**, then reload.
+
+
+  ## Tech Stack & Credits
+
+  ### Built with
+
+  | Purpose | Library |
+|---------|---------|
+| PDF rendering | [PDF.js](https://mozilla.github.io/pdf.js/) (Mozilla) |
+| PDF manipulation | [pdf-lib](https://pdf-lib.js.org/) |
+| Signature capture | [Signature Pad](https://github.com/szimek/signature_pad) |
+| Word preview | [Mammoth.js](https://github.com/mwilliamson/mammoth.js) |
+| Word conversion | [LibreOffice](https://www.libreoffice.org/) |
+| Backend | [Express](https://expressjs.com/) |
+| Password hashing | [bcryptjs](https://github.com/dcodeIO/bcrypt.js) |
+| Session tokens | [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) |
+| File uploads | [multer](https://github.com/expressjs/multer) |
+| Fonts | [Inter](https://fonts.google.com/specimen/Inter) and handwritten Google Fonts |
+
+No frameworks were used — Signora is vanilla HTML, CSS, and ES modules, so it deploys without a build step and stays light.
+
+## License
+
+MIT License. See LICENSE for the full text.
+
+You're free to use Signora personally, commercially, or in a product you sell. Attribution is appreciated.
+
+[Back to top](#Signora)
