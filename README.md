@@ -114,6 +114,7 @@ Signora uses **two different signing pipelines**, chosen automatically based on 
 
 ### Pipeline A — PDF (fully local)
 
+```
 ┌────────────────┐ ┌──────────────────┐ ┌───────────────────┐
 │ User uploads │───▶ │ PDF.js renders │───▶ │ User draws and │
 │ a PDF │ │ page to canvas │ │ places signature │
@@ -132,7 +133,6 @@ Signora uses **two different signing pipelines**, chosen automatically based on 
 ### Pipeline B — Word documents (server-assisted)
 
 ```
-
 ┌────────────────┐ ┌──────────────────┐ ┌───────────────────┐
 │ User uploads │───▶ │ Mammoth.js │───▶ │ User draws and │
 │ DOCX/DOC │ │ renders preview │ │ places signature │
@@ -149,15 +149,13 @@ Signora uses **two different signing pipelines**, chosen automatically based on 
 │ LibreOffice │
 │ converts to PDF │
 └───────────────────┘
-
 ```
 
 The output is **PDF**, not DOCX. This is a deliberate trade-off: LibreOffice preserves the visual layout of the original Word document — margins, fonts, tables, images, page breaks — but the result is a fixed-format PDF. Attempting to modify DOCX internals in the browser breaks formatting on almost every real document; the LibreOffice route is the only way to get *reliable* visual fidelity.
 
-```
 
 ## Project Structure
-
+```
 signora/
 │
 ├── assets/
@@ -194,7 +192,7 @@ signora/
 ├── Dockerfile
 └── README.md ← this file
 
-
+```
 
 
 
