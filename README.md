@@ -25,6 +25,11 @@ Everything else — drawing your signature, placing it on the document, embeddin
 
 You install it like a native app. You sign like you would on paper. Nothing gets uploaded that doesn't have to be.
 
+Here is the link to the Signora — Private Document Signing PWA Application-heroku where you can login to access the Ai Powered Data Analysis App system [link](https://signora-b4651409c3d0.herokuapp.com/)
+
+   ![Signora Document Signing Application](assets/image/front-page.png)
+
+
 ---
 
 ## Table of Contents
@@ -63,6 +68,11 @@ Most e-signature tools ask you to upload sensitive documents to their servers, c
 | **Format fidelity** | PDFs are signed in-place. Word documents are converted with LibreOffice — the industry-standard converter — so the visual result matches the original. |
 
 Signora is not trying to replace DocuSign for enterprises. It's for individuals, small teams, freelancers, and privacy-conscious users who need to sign a document *now* without handing it over to a third party.
+
+   ![signing](assets/image/signing.png)
+
+   ![second-signing](assets/image/second-signing.png)
+
 
 ---
 
@@ -153,6 +163,9 @@ Signora uses **two different signing pipelines**, chosen automatically based on 
 
 The output is **PDF**, not DOCX. This is a deliberate trade-off: LibreOffice preserves the visual layout of the original Word document — margins, fonts, tables, images, page breaks — but the result is a fixed-format PDF. Attempting to modify DOCX internals in the browser breaks formatting on almost every real document; the LibreOffice route is the only way to get *reliable* visual fidelity.
 
+ ![pink](assets/image/pink.png)
+ 
+ ![red](assets/image/red.png)
 
 ## Project Structure
 ```
@@ -213,6 +226,7 @@ signora/
 | `src/js/signature.js` | Wraps Signature Pad. Exposes draw mode, typed mode, colour/width/style controls, and PNG export at high DPI. |
 
 ---
+ ![typed](assets/image/typed.png)
 
 ## Requirements
 
@@ -282,14 +296,19 @@ export JWT_SECRET="$(openssl rand -hex 48)"
 npm start
 
 ```
-The server opens http://localhost:3000 in your browser. You'll be redirected to the login page.
+The server opens `http://localhost:3000` in your browser or on Heroku `https://signora-b4651409c3d0.herokuapp.com/` . You'll be redirected to the login page.
+
+ ![log](assets/image/log.png)
+
+ 
+ ![telo](assets/image/telo.png)
 
 ## First-time use
 
 ```
 Click Create one on the login page
 
-Choose a username, password, and (optionally) a display name
+Choose a username (admin), password (password), and (optionally) a display name
 
 You're signed in and taken to the main app
 
@@ -304,6 +323,20 @@ Click Save Signed Document → the signed file downloads
 That's it. No accounts to activate, no email verification, no payment screens
 
 ```
+
+## Login and Password Details
+
+```
+username: admin
+password: password
+
+```
+## Design
+
+  ### Color Design
+  
+![color](assets/image/color.png)
+
 
 ## Environment Variables
 
@@ -465,4 +498,4 @@ MIT License. See LICENSE for the full text.
 
 You're free to use Signora personally, commercially, or in a product you sell. Attribution is appreciated.
 
-[Back to top](#Signora)
+[Back to top](#signora--private-document-signing-pwa)
